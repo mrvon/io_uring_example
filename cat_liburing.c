@@ -1,17 +1,17 @@
 #include <fcntl.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
 #include <liburing.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #define QUEUE_DEPTH 1
-#define BLOCK_SZ    1024
+#define BLOCK_SZ 1024
 
 struct file_info {
     off_t file_sz;
-    struct iovec iovecs[];      /* Referred by readv/writev */
+    struct iovec iovecs[]; /* Referred by readv/writev */
 };
 
 /*
@@ -19,10 +19,11 @@ struct file_info {
 * Properly handles regular file and block devices as well. Pretty.
 * */
 
-off_t get_file_size(int fd) {
+off_t
+get_file_size(int fd) {
     struct stat st;
 
-    if(fstat(fd, &st) < 0) {
+    if (fstat(fd, &st) < 0) {
         perror("fstat");
         return -1;
     }
@@ -44,7 +45,8 @@ off_t get_file_size(int fd) {
  * We use buffered output here to be efficient,
  * since we need to output character-by-character.
  * */
-void output_to_console(char *buf, int len) {
+void
+output_to_console(char *buf, int len) {
     while (len--) {
         fputc(*buf++, stdout);
     }
@@ -55,7 +57,8 @@ void output_to_console(char *buf, int len) {
  * the readv operation and print it to the console.
  * */
 
-int get_completion_and_print(struct io_uring *ring) {
+int
+get_completion_and_print(struct io_uring *ring) {
     struct io_uring_cqe *cqe;
     int ret = io_uring_wait_cqe(ring, &cqe);
     if (ret < 0) {
@@ -67,9 +70,10 @@ int get_completion_and_print(struct io_uring *ring) {
         return 1;
     }
     struct file_info *fi = io_uring_cqe_get_data(cqe);
-    int blocks = (int) fi->file_sz / BLOCK_SZ;
-    if (fi->file_sz % BLOCK_SZ) blocks++;
-    for (int i = 0; i < blocks; i ++)
+    int blocks = (int)fi->file_sz / BLOCK_SZ;
+    if (fi->file_sz % BLOCK_SZ)
+        blocks++;
+    for (int i = 0; i < blocks; i++)
         output_to_console(fi->iovecs[i].iov_base, fi->iovecs[i].iov_len);
 
     io_uring_cqe_seen(ring, cqe);
@@ -80,7 +84,8 @@ int get_completion_and_print(struct io_uring *ring) {
  * Submit the readv request via liburing
  * */
 
-int submit_read_request(char *file_path, struct io_uring *ring) {
+int
+submit_read_request(char *file_path, struct io_uring *ring) {
     int file_fd = open(file_path, O_RDONLY);
     if (file_fd < 0) {
         perror("open");
@@ -90,10 +95,10 @@ int submit_read_request(char *file_path, struct io_uring *ring) {
     off_t bytes_remaining = file_sz;
     off_t offset = 0;
     int current_block = 0;
-    int blocks = (int) file_sz / BLOCK_SZ;
-    if (file_sz % BLOCK_SZ) blocks++;
-    struct file_info *fi = malloc(sizeof(*fi) +
-                                          (sizeof(struct iovec) * blocks));
+    int blocks = (int)file_sz / BLOCK_SZ;
+    if (file_sz % BLOCK_SZ)
+        blocks++;
+    struct file_info *fi = malloc(sizeof(*fi) + (sizeof(struct iovec) * blocks));
 
     /*
      * For each block of the file we need to read, we allocate an iovec struct
@@ -110,7 +115,7 @@ int submit_read_request(char *file_path, struct io_uring *ring) {
         fi->iovecs[current_block].iov_len = bytes_to_read;
 
         void *buf;
-        if( posix_memalign(&buf, BLOCK_SZ, BLOCK_SZ)) {
+        if (posix_memalign(&buf, BLOCK_SZ, BLOCK_SZ)) {
             perror("posix_memalign");
             return 1;
         }
@@ -133,12 +138,12 @@ int submit_read_request(char *file_path, struct io_uring *ring) {
     return 0;
 }
 
-int main(int argc, char *argv[]) {
+int
+main(int argc, char *argv[]) {
     struct io_uring ring;
 
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s [file name] <[file name] ...>\n",
-                argv[0]);
+        fprintf(stderr, "Usage: %s [file name] <[file name] ...>\n", argv[0]);
         return 1;
     }
 
@@ -158,4 +163,3 @@ int main(int argc, char *argv[]) {
     io_uring_queue_exit(&ring);
     return 0;
 }
-

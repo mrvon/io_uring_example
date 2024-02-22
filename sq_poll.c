@@ -1,24 +1,25 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <fcntl.h>
 #include <liburing.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
-#define BUF_SIZE    512
-#define FILE_NAME1  "/tmp/io_uring_sq_test.txt"
-#define STR1        "What is this life if, full of care,\n"
-#define STR2        "We have no time to stand and stare."
+#define BUF_SIZE 512
+#define FILE_NAME1 "/tmp/io_uring_sq_test.txt"
+#define STR1 "What is this life if, full of care,\n"
+#define STR2 "We have no time to stand and stare."
 
-void print_sq_poll_kernel_thread_status() {
-
-    if (system("ps --ppid 2 | grep io_uring-sq" ) == 0)
+void
+print_sq_poll_kernel_thread_status() {
+    if (system("ps --ppid 2 | grep io_uring-sq") == 0)
         printf("Kernel thread io_uring-sq found running...\n");
     else
         printf("Kernel thread io_uring-sq is not running.\n");
 }
 
-int start_fixed_buffer_ops(struct io_uring *ring) {
+int
+start_fixed_buffer_ops(struct io_uring *ring) {
     int fds[1];
     char buff1[BUF_SIZE];
     char buff2[BUF_SIZE];
@@ -30,7 +31,7 @@ int start_fixed_buffer_ops(struct io_uring *ring) {
     int str2_sz = strlen(STR2);
 
     fds[0] = open(FILE_NAME1, O_RDWR | O_TRUNC | O_CREAT, 0644);
-    if (fds[0] < 0 ) {
+    if (fds[0] < 0) {
         perror("open");
         return 1;
     }
@@ -43,7 +44,7 @@ int start_fixed_buffer_ops(struct io_uring *ring) {
     strncpy(buff2, STR2, str2_sz);
 
     int ret = io_uring_register_files(ring, fds, 1);
-    if(ret) {
+    if (ret) {
         fprintf(stderr, "Error registering files: %s", strerror(-ret));
         return 1;
     }
@@ -66,11 +67,10 @@ int start_fixed_buffer_ops(struct io_uring *ring) {
 
     io_uring_submit(ring);
 
-    for(int i = 0; i < 2; i ++) {
+    for (int i = 0; i < 2; i++) {
         int ret = io_uring_wait_cqe(ring, &cqe);
         if (ret < 0) {
-            fprintf(stderr, "Error waiting for completion: %s\n",
-                    strerror(-ret));
+            fprintf(stderr, "Error waiting for completion: %s\n", strerror(-ret));
             return 1;
         }
         /* Now that we have the CQE, let's process the data */
@@ -101,11 +101,10 @@ int start_fixed_buffer_ops(struct io_uring *ring) {
 
     io_uring_submit(ring);
 
-    for(int i = 0; i < 2; i ++) {
+    for (int i = 0; i < 2; i++) {
         int ret = io_uring_wait_cqe(ring, &cqe);
         if (ret < 0) {
-            fprintf(stderr, "Error waiting for completion: %s\n",
-                    strerror(-ret));
+            fprintf(stderr, "Error waiting for completion: %s\n", strerror(-ret));
             return 1;
         }
         /* Now that we have the CQE, let's process the data */
@@ -117,9 +116,11 @@ int start_fixed_buffer_ops(struct io_uring *ring) {
     }
     printf("Contents read from file:\n");
     printf("%s%s", buff3, buff4);
+    return 0;
 }
 
-int main() {
+int
+main() {
     struct io_uring ring;
     struct io_uring_params params;
 

@@ -1,37 +1,39 @@
-#include <sys/eventfd.h>
-#include <unistd.h>
+#include <fcntl.h>
+#include <liburing.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
-#include <liburing.h>
-#include <fcntl.h>
+#include <sys/eventfd.h>
+#include <unistd.h>
 
-#define BUFF_SZ   512
+#define BUFF_SZ 512
 
 char buff[BUFF_SZ + 1];
 struct io_uring ring;
 
-void error_exit(char *message) {
+void
+error_exit(char *message) {
     perror(message);
     exit(EXIT_FAILURE);
 }
 
-void *listener_thread(void *data) {
+void *
+listener_thread(void *data) {
     struct io_uring_cqe *cqe;
-    int efd = (int) data;
+    int efd = (int)data;
     eventfd_t v;
     printf("%s: Waiting for completion event...\n", __FUNCTION__);
 
     int ret = eventfd_read(efd, &v);
-    if (ret < 0) error_exit("eventfd_read");
+    if (ret < 0)
+        error_exit("eventfd_read");
 
     printf("%s: Got completion event.\n", __FUNCTION__);
 
     ret = io_uring_wait_cqe(&ring, &cqe);
     if (ret < 0) {
-        fprintf(stderr, "Error waiting for completion: %s\n",
-                strerror(-ret));
+        fprintf(stderr, "Error waiting for completion: %s\n", strerror(-ret));
         return NULL;
     }
     /* Now that we have the CQE, let's process it */
@@ -45,7 +47,8 @@ void *listener_thread(void *data) {
     return NULL;
 }
 
-int setup_io_uring(int efd) {
+int
+setup_io_uring(int efd) {
     int ret = io_uring_queue_init(8, &ring, 0);
     if (ret) {
         fprintf(stderr, "Unable to setup io_uring: %s\n", strerror(-ret));
@@ -55,7 +58,8 @@ int setup_io_uring(int efd) {
     return 0;
 }
 
-int read_file_with_io_uring() {
+int
+read_file_with_io_uring() {
     struct io_uring_sqe *sqe;
 
     sqe = io_uring_get_sqe(&ring);
@@ -71,7 +75,8 @@ int read_file_with_io_uring() {
     return 0;
 }
 
-int main() {
+int
+main() {
     pthread_t t;
     int efd;
 

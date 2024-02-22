@@ -1,42 +1,46 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
 #include <fcntl.h>
-#include <string.h>
 #include <liburing.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
-#define BUF_SZ      512
-#define BUF_COUNT   32
-#define BUF_GRP_ID  0xBEEF
+#define BUF_SZ 512
+#define BUF_COUNT 32
+#define BUF_GRP_ID 0xBEEF
 
 char bufs[BUF_COUNT][BUF_SZ];
 
-int setup_buffers(struct io_uring *ring) {
+int
+setup_buffers(struct io_uring *ring) {
     struct io_uring_sqe *sqe;
     struct io_uring_cqe *cqe;
 
     sqe = io_uring_get_sqe(ring);
     io_uring_prep_provide_buffers(sqe, bufs, BUF_SZ, BUF_COUNT, BUF_GRP_ID, 0);
 
-    io_uring_submit(&ring);
-    io_uring_wait_cqe(&ring, &cqe);
+    io_uring_submit(ring);
+    io_uring_wait_cqe(ring, &cqe);
     if (cqe->res < 0) {
         printf("cqe->res = %d\n", cqe->res);
         exit(1);
     }
-    io_uring_cqe_seen(&ring, cqe);
+    io_uring_cqe_seen(ring, cqe);
+    return 0;
 }
 
-int provide_buffers(struct io_uring *ring) {
-
+int
+provide_buffers(struct io_uring *ring) {
+    return 0;
 }
 
-int main() {
+int
+main() {
     struct io_uring ring;
 
     /* Ensure that the running kernel supports IORING_OP_PROVIDE_BUFFERS */
     struct io_uring_probe *probe = io_uring_get_probe();
-    if(!io_uring_opcode_supported(probe, IORING_OP_PROVIDE_BUFFERS)) {
+    if (!io_uring_opcode_supported(probe, IORING_OP_PROVIDE_BUFFERS)) {
         fprintf(stderr, "The provide buffers operation is not supported by the running kernel.\n");
         free(probe);
         return 1;

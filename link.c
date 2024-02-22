@@ -1,18 +1,19 @@
+#include "liburing.h"
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
-#include <fcntl.h>
-#include "liburing.h"
 
-#define FILE_NAME1   "/tmp/io_uring_test.txt"
-#define STR         "Hello, io_uring!"
+#define FILE_NAME1 "/tmp/io_uring_test.txt"
+#define STR "Hello, io_uring!"
 char buff[32];
 
-int link_operations(struct io_uring *ring) {
+int
+link_operations(struct io_uring *ring) {
     struct io_uring_sqe *sqe;
     struct io_uring_cqe *cqe;
 
     int fd = open(FILE_NAME1, O_RDWR | O_TRUNC | O_CREAT, 0644);
-    if (fd < 0 ) {
+    if (fd < 0) {
         perror("open");
         return 1;
     }
@@ -23,7 +24,7 @@ int link_operations(struct io_uring *ring) {
         return 1;
     }
 
-    io_uring_prep_write(sqe, fd, STR, strlen(STR), 0 );
+    io_uring_prep_write(sqe, fd, STR, strlen(STR), 0);
     sqe->flags |= IOSQE_IO_LINK;
 
     sqe = io_uring_get_sqe(ring);
@@ -32,7 +33,7 @@ int link_operations(struct io_uring *ring) {
         return 1;
     }
 
-    io_uring_prep_read(sqe, fd, buff, strlen(STR),0);
+    io_uring_prep_read(sqe, fd, buff, strlen(STR), 0);
     sqe->flags |= IOSQE_IO_LINK;
 
     sqe = io_uring_get_sqe(ring);
@@ -48,8 +49,7 @@ int link_operations(struct io_uring *ring) {
     for (int i = 0; i < 3; i++) {
         int ret = io_uring_wait_cqe(ring, &cqe);
         if (ret < 0) {
-            fprintf(stderr, "Error waiting for completion: %s\n",
-                                                            strerror(-ret));
+            fprintf(stderr, "Error waiting for completion: %s\n", strerror(-ret));
             return 1;
         }
         /* Now that we have the CQE, let's process the data */
@@ -60,9 +60,11 @@ int link_operations(struct io_uring *ring) {
         io_uring_cqe_seen(ring, cqe);
     }
     printf("Buffer contents: %s\n", buff);
+    return 0;
 }
 
-int main() {
+int
+main() {
     struct io_uring ring;
 
     int ret = io_uring_queue_init(8, &ring, 0);
